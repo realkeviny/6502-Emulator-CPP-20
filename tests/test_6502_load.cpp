@@ -17,7 +17,7 @@ struct ExpectedState
 };
 
 /**
- * @class M6502Test
+ * @class M6502LoadRegisterTests
  * @brief Fluent test harness and static test suite for MOS 6502 timing and execution verification.
  *
  * @par Pattern 1: Parameterized Static Helper (Standard Addressing Modes)
@@ -26,7 +26,7 @@ struct ExpectedState
  * {
  *     // Invokes pre-packaged instruction test suites across addressing modes;
  *     // automatically validates cycles, target register values, and untouched flag invariants.
- *     M6502Test::<TEST_HELPER_METHOD>(
+ *     M6502LoadRegisterTests::<TEST_HELPER_METHOD>(
  *         [&CPU::<INDEX_REGISTER>,] CPU::<OPCODE>, &CPU::<TARGET_REGISTER>
  *     );
  * }
@@ -36,7 +36,7 @@ struct ExpectedState
  * @code
  * TEST_CASE("<INSTRUCTION_NAME> <SCENARIO_DESCRIPTION>", "[<TAG>]")
  * {
- *     M6502Test{}
+ *     M6502LoadRegisterTests{}
  *         // 1. [Pre-Conditions] Configure initial CPU registers (optional)
  *         //    Accepts register member pointers, e.g., &CPU::X, &CPU::Y
  *         [.SetRegister(&CPU::<REGISTER>, <INITIAL_VALUE>)]...
@@ -67,7 +67,7 @@ struct ExpectedState
  * }
  * @endcode
  */
-class M6502Test
+class M6502LoadRegisterTests
 {
     Memory bar;
     CPU MyCPU;
@@ -75,26 +75,26 @@ class M6502Test
     Word PC{0xFFFC};
 
 public:
-    M6502Test()
+    M6502LoadRegisterTests()
     {
         MyCPU.Reset(bar);
         ModelCPU = MyCPU;
     }
 
-    M6502Test &SetRegister(MOS6502::Byte MOS6502::CPU::*RegisterToTest, MOS6502::Byte Value)
+    M6502LoadRegisterTests &SetRegister(MOS6502::Byte MOS6502::CPU::*RegisterToTest, MOS6502::Byte Value)
     {
         MyCPU.*RegisterToTest = Value;
         return *this;
     }
 
-    M6502Test &Write(MOS6502::Word Address, MOS6502::Byte Value)
+    M6502LoadRegisterTests &Write(MOS6502::Word Address, MOS6502::Byte Value)
     {
         bar[Address] = Value;
         return *this;
     }
 
     // Add Program in
-    M6502Test &LoadProgram(std::initializer_list<MOS6502::Byte> OpCodes)
+    M6502LoadRegisterTests &LoadProgram(std::initializer_list<MOS6502::Byte> OpCodes)
     {
         for (auto code : OpCodes)
         {
@@ -153,26 +153,29 @@ public:
     // Then I use the CPU inside, and ask for the value of the particular register
     static void TestLoadRegisterImmediate(MOS6502::Byte OpcodeToTest, MOS6502::Byte MOS6502::CPU::*RegisterToTest)
     {
-        M6502Test{}.LoadProgram({OpcodeToTest, 0x84}).VerifyLoadRegister(2, RegisterToTest, 0x84, 2);
+        M6502LoadRegisterTests{}.LoadProgram({OpcodeToTest, 0x84}).VerifyLoadRegister(2, RegisterToTest, 0x84, 2);
     }
 
     static void TestLoadRegisterImmediateZeroFlag(MOS6502::Byte OpcodeToTest,
                                                   MOS6502::Byte MOS6502::CPU::*RegisterToTest)
     {
-        M6502Test{}
+        M6502LoadRegisterTests{}
             .SetRegister(RegisterToTest, 0x96)
             .LoadProgram({OpcodeToTest, 0x00})
             .VerifyLoadRegister(2, RegisterToTest, 0x0, 2);
     }
     static void TestLoadRegisterZeroPage(MOS6502::Byte OpcodeToTest, MOS6502::Byte MOS6502::CPU::*RegisterToTest)
     {
-        M6502Test{}.LoadProgram({OpcodeToTest, 0x84}).Write(0x84, 0x11).VerifyLoadRegister(3, RegisterToTest, 0x11, 3);
+        M6502LoadRegisterTests{}
+            .LoadProgram({OpcodeToTest, 0x84})
+            .Write(0x84, 0x11)
+            .VerifyLoadRegister(3, RegisterToTest, 0x11, 3);
     }
 
     static void TestLoadRegisterZeroPageIndexed(MOS6502::Byte MOS6502::CPU::*IndexRegister, MOS6502::Byte OpcodeToTest,
                                                 MOS6502::Byte MOS6502::CPU::*RegisterToTest)
     {
-        M6502Test{}
+        M6502LoadRegisterTests{}
             .SetRegister(IndexRegister, 5)
             .LoadProgram({OpcodeToTest, 0x33})
             .Write(0x0038, 0x17)
@@ -183,7 +186,7 @@ public:
                                                               MOS6502::Byte OpcodeToTest,
                                                               MOS6502::Byte MOS6502::CPU::*RegisterToTest)
     {
-        M6502Test{}
+        M6502LoadRegisterTests{}
             .SetRegister(IndexRegister, 0xFF)
             .LoadProgram({OpcodeToTest, 0x80})
             .Write(0x007F, 0x17)
@@ -192,7 +195,7 @@ public:
 
     static void TestLoadRegisterAbsolute(MOS6502::Byte OpcodeToTest, MOS6502::Byte MOS6502::CPU::*RegisterToTest)
     {
-        M6502Test{}
+        M6502LoadRegisterTests{}
             .LoadProgram({OpcodeToTest, 0x80, 0x44})
             .Write(0x4480, 0x17)
             .VerifyLoadRegister(4, RegisterToTest, 0x17, 4);
@@ -201,7 +204,7 @@ public:
     static void TestLoadRegisterAbsoluteIndexed(MOS6502::Byte MOS6502::CPU::*IndexRegister, MOS6502::Byte OpcodeToTest,
                                                 MOS6502::Byte MOS6502::CPU::*RegisterToTest)
     {
-        M6502Test{}
+        M6502LoadRegisterTests{}
             .SetRegister(IndexRegister, 1)
             .LoadProgram({OpcodeToTest, 0x80, 0x44})
             .Write(0x4481, 0x17)
@@ -211,7 +214,7 @@ public:
                                                                     MOS6502::Byte OpcodeToTest,
                                                                     MOS6502::Byte MOS6502::CPU::*RegisterToTest)
     {
-        M6502Test{}
+        M6502LoadRegisterTests{}
             .SetRegister(IndexRegister, 0xFF)
             .LoadProgram({OpcodeToTest, 0x02, 0x44}) // 0x4402
             .Write(0x4501, 0x17)                     // 0x4402 + 0xFF = 0x4501
@@ -220,7 +223,7 @@ public:
     static void TestLDAIndexedIndirectX(MOS6502::Byte MOS6502::CPU::*IndexRegister, MOS6502::Byte OpcodeToTest,
                                         MOS6502::Byte MOS6502::CPU::*RegisterToTest)
     {
-        M6502Test{}
+        M6502LoadRegisterTests{}
             .SetRegister(IndexRegister, 0x04)
             .LoadProgram({OpcodeToTest, 0x02})
             .Write(0x0006, 0x00)
@@ -231,7 +234,7 @@ public:
     static void TestLDAIndirectIndexedY(MOS6502::Byte MOS6502::CPU::*IndexRegister, MOS6502::Byte OpcodeToTest,
                                         MOS6502::Byte MOS6502::CPU::*RegisterToTest)
     {
-        M6502Test{}
+        M6502LoadRegisterTests{}
             .SetRegister(IndexRegister, 0x04)
             .LoadProgram({OpcodeToTest, 0x02})
             .Write(0x0002, 0x00)
@@ -243,7 +246,7 @@ public:
                                                             MOS6502::Byte OpcodeToTest,
                                                             MOS6502::Byte MOS6502::CPU::*RegisterToTest)
     {
-        M6502Test{}
+        M6502LoadRegisterTests{}
             .SetRegister(IndexRegister, 0xFF)
             .LoadProgram({OpcodeToTest, 0x02})
             .Write(0x0002, 0x02)
@@ -255,135 +258,135 @@ public:
 
 TEST_CASE("CPU Idle Test", "[IDLE]")
 {
-    M6502Test{}.VerifyWholeState(0, {.Cycles = 0});
+    M6502LoadRegisterTests{}.VerifyWholeState(0, {.Cycles = 0});
 }
 
 TEST_CASE("More Cycles Than Requested If Required By Instruction", "[MCTR]")
 {
-    M6502Test{}.LoadProgram({CPU::INST_LDA_IMM, 0x84}).VerifyCycleCountOnly(1, 2);
+    M6502LoadRegisterTests{}.LoadProgram({CPU::INST_LDA_IMM, 0x84}).VerifyCycleCountOnly(1, 2);
 }
 
 TEST_CASE("LDA Immediate Mode", "[LDAIM]")
 {
-    M6502Test::TestLoadRegisterImmediate(CPU::INST_LDA_IMM, &CPU::A);
+    M6502LoadRegisterTests::TestLoadRegisterImmediate(CPU::INST_LDA_IMM, &CPU::A);
 }
 
 TEST_CASE("LDX Immediate Mode", "[LDXIM]")
 {
-    M6502Test::TestLoadRegisterImmediate(CPU::INST_LDX_IMM, &CPU::X);
+    M6502LoadRegisterTests::TestLoadRegisterImmediate(CPU::INST_LDX_IMM, &CPU::X);
 }
 
 TEST_CASE("LDY Immediate Mode", "[LDYIM]")
 {
-    M6502Test::TestLoadRegisterImmediate(CPU::INST_LDY_IMM, &CPU::Y);
+    M6502LoadRegisterTests::TestLoadRegisterImmediate(CPU::INST_LDY_IMM, &CPU::Y);
 }
 
 TEST_CASE("LDA Immediate Mode Affecting The Zero Flag", "[LDAIMAZF]")
 {
-    M6502Test::TestLoadRegisterImmediateZeroFlag(CPU::INST_LDA_IMM, &CPU::A);
+    M6502LoadRegisterTests::TestLoadRegisterImmediateZeroFlag(CPU::INST_LDA_IMM, &CPU::A);
 }
 
 TEST_CASE("LDA Zero Page Mode", "[LDAZP]")
 {
-    M6502Test::TestLoadRegisterZeroPage(CPU::INST_LDA_ZRP, &CPU::A);
+    M6502LoadRegisterTests::TestLoadRegisterZeroPage(CPU::INST_LDA_ZRP, &CPU::A);
 }
 
 TEST_CASE("LDX Zero Page Mode", "[LDXZP]")
 {
-    M6502Test::TestLoadRegisterZeroPage(CPU::INST_LDX_ZRP, &CPU::X);
+    M6502LoadRegisterTests::TestLoadRegisterZeroPage(CPU::INST_LDX_ZRP, &CPU::X);
 }
 
 TEST_CASE("LDY Zero Page Mode", "[LDYZP]")
 {
-    M6502Test::TestLoadRegisterZeroPage(CPU::INST_LDY_ZRP, &CPU::Y);
+    M6502LoadRegisterTests::TestLoadRegisterZeroPage(CPU::INST_LDY_ZRP, &CPU::Y);
 }
 
 TEST_CASE("LDA Zero Page X", "[LDAZPX]")
 {
-    M6502Test::TestLoadRegisterZeroPageIndexed(&CPU::X, CPU::INST_LDA_ZRPX, &CPU::A);
+    M6502LoadRegisterTests::TestLoadRegisterZeroPageIndexed(&CPU::X, CPU::INST_LDA_ZRPX, &CPU::A);
 }
 
 TEST_CASE("LDX Zero Page Y", "[LDXZPY]")
 {
-    M6502Test::TestLoadRegisterZeroPageIndexed(&CPU::Y, CPU::INST_LDX_ZRPY, &CPU::X);
+    M6502LoadRegisterTests::TestLoadRegisterZeroPageIndexed(&CPU::Y, CPU::INST_LDX_ZRPY, &CPU::X);
 }
 
 TEST_CASE("LDY Zero Page X", "[LDYZPX]")
 {
-    M6502Test::TestLoadRegisterZeroPageIndexed(&CPU::X, CPU::INST_LDY_ZRPX, &CPU::Y);
+    M6502LoadRegisterTests::TestLoadRegisterZeroPageIndexed(&CPU::X, CPU::INST_LDY_ZRPX, &CPU::Y);
 }
 
 TEST_CASE("LDA Zero Page X Wrapping Around", "[LDAZPXW]")
 {
-    M6502Test::TestLoadRegisterZeroPageIndexedWrappingAround(&CPU::X, CPU::INST_LDA_ZRPX, &CPU::A);
+    M6502LoadRegisterTests::TestLoadRegisterZeroPageIndexedWrappingAround(&CPU::X, CPU::INST_LDA_ZRPX, &CPU::A);
 }
 
 TEST_CASE("LDA Absolute", "[LDAABS]")
 {
-    M6502Test::TestLoadRegisterAbsolute(CPU::INST_LDA_ABS, &CPU::A);
+    M6502LoadRegisterTests::TestLoadRegisterAbsolute(CPU::INST_LDA_ABS, &CPU::A);
 }
 
 TEST_CASE("LDX Absolute", "[LDXABS]")
 {
-    M6502Test::TestLoadRegisterAbsolute(CPU::INST_LDX_ABS, &CPU::X);
+    M6502LoadRegisterTests::TestLoadRegisterAbsolute(CPU::INST_LDX_ABS, &CPU::X);
 }
 
 TEST_CASE("LDY Absolute", "[LDYABS]")
 {
-    M6502Test::TestLoadRegisterAbsolute(CPU::INST_LDY_ABS, &CPU::Y);
+    M6502LoadRegisterTests::TestLoadRegisterAbsolute(CPU::INST_LDY_ABS, &CPU::Y);
 }
 
 TEST_CASE("LDA Absolute X", "[LDAABSX]")
 {
-    M6502Test::TestLoadRegisterAbsoluteIndexed(&CPU::X, CPU::INST_LDA_ABSX, &CPU::A);
+    M6502LoadRegisterTests::TestLoadRegisterAbsoluteIndexed(&CPU::X, CPU::INST_LDA_ABSX, &CPU::A);
 }
 
 TEST_CASE("LDA Absolute X Page Boundary Crossing", "[LDAABSXPC]")
 {
-    M6502Test::TestLoadRegisterAbsoluteIndexedPageBoundaryCrossing(&CPU::X, CPU::INST_LDA_ABSX, &CPU::A);
+    M6502LoadRegisterTests::TestLoadRegisterAbsoluteIndexedPageBoundaryCrossing(&CPU::X, CPU::INST_LDA_ABSX, &CPU::A);
 }
 
 TEST_CASE("LDA Absolute Y", "[LDAABSY]")
 {
-    M6502Test::TestLoadRegisterAbsoluteIndexed(&CPU::Y, CPU::INST_LDA_ABSY, &CPU::A);
+    M6502LoadRegisterTests::TestLoadRegisterAbsoluteIndexed(&CPU::Y, CPU::INST_LDA_ABSY, &CPU::A);
 }
 
 TEST_CASE("LDA Absolute Y Page Boundary Crossing", "[LDAABSYPBC]")
 {
-    M6502Test::TestLoadRegisterAbsoluteIndexedPageBoundaryCrossing(&CPU::Y, CPU::INST_LDA_ABSY, &CPU::A);
+    M6502LoadRegisterTests::TestLoadRegisterAbsoluteIndexedPageBoundaryCrossing(&CPU::Y, CPU::INST_LDA_ABSY, &CPU::A);
 }
 
 TEST_CASE("LDX Absolute Y", "[LDXABSY]")
 {
-    M6502Test::TestLoadRegisterAbsoluteIndexed(&CPU::Y, CPU::INST_LDX_ABSY, &CPU::X);
+    M6502LoadRegisterTests::TestLoadRegisterAbsoluteIndexed(&CPU::Y, CPU::INST_LDX_ABSY, &CPU::X);
 }
 
 TEST_CASE("LDX Absolute Y Page Boundary Crossing", "[LDXABSYPBC]")
 {
-    M6502Test::TestLoadRegisterAbsoluteIndexedPageBoundaryCrossing(&CPU::Y, CPU::INST_LDX_ABSY, &CPU::X);
+    M6502LoadRegisterTests::TestLoadRegisterAbsoluteIndexedPageBoundaryCrossing(&CPU::Y, CPU::INST_LDX_ABSY, &CPU::X);
 }
 
 TEST_CASE("LDY Absolute X", "[LDYABSX]")
 {
-    M6502Test::TestLoadRegisterAbsoluteIndexed(&CPU::X, CPU::INST_LDY_ABSX, &CPU::Y);
+    M6502LoadRegisterTests::TestLoadRegisterAbsoluteIndexed(&CPU::X, CPU::INST_LDY_ABSX, &CPU::Y);
 }
 
 TEST_CASE("LDY Absolute X Page Boundary Crossing", "[LDYABSXPBC]")
 {
-    M6502Test::TestLoadRegisterAbsoluteIndexedPageBoundaryCrossing(&CPU::X, CPU::INST_LDY_ABSX, &CPU::Y);
+    M6502LoadRegisterTests::TestLoadRegisterAbsoluteIndexedPageBoundaryCrossing(&CPU::X, CPU::INST_LDY_ABSX, &CPU::Y);
 }
 
 TEST_CASE("LDA Indexed Indirect X", "[LDAINDX]")
 {
-    M6502Test::TestLDAIndexedIndirectX(&CPU::X, CPU::INST_LDA_INDX, &CPU::A);
+    M6502LoadRegisterTests::TestLDAIndexedIndirectX(&CPU::X, CPU::INST_LDA_INDX, &CPU::A);
 }
 
 TEST_CASE("LDA Indirect Indexed Y", "[LDAINDY]")
 {
-    M6502Test::TestLDAIndirectIndexedY(&CPU::Y, CPU::INST_LDA_INDY, &CPU::A);
+    M6502LoadRegisterTests::TestLDAIndirectIndexedY(&CPU::Y, CPU::INST_LDA_INDY, &CPU::A);
 }
 
 TEST_CASE("LDA Indirect Indexed Y Page Boundary Crossing", "[LDAINDYPBC]")
 {
-    M6502Test::TestLDAIndirectIndexedYPageBoundaryCrossing(&CPU::Y, CPU::INST_LDA_INDY, &CPU::A);
+    M6502LoadRegisterTests::TestLDAIndirectIndexedYPageBoundaryCrossing(&CPU::Y, CPU::INST_LDA_INDY, &CPU::A);
 }

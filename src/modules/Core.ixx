@@ -30,10 +30,11 @@ struct CPU
     // Return the number of cycles that were used
     std::int32_t Execute(std::int32_t NumOfCycles, Memory &Mbar);
 
-    Byte FetchByte(std::int32_t &NumofCycles, Memory &Mbar);
-    Word FetchWord(std::int32_t &NumofCycles, Memory &Mbar);
-    Byte ReadByte(std::int32_t &NumOfCycles, Word Address, Memory &Mbar);
-    Word ReadWord(std::int32_t &NumOfCycles, Word Address, Memory &Mbar);
+    Byte FetchByte(std::int32_t &NumofCycles, const Memory &Mbar);
+    Word FetchWord(std::int32_t &NumofCycles, const Memory &Mbar);
+    Byte ReadByte(std::int32_t &NumOfCycles, Word Address, const Memory &Mbar);
+    Word ReadWord(std::int32_t &NumOfCycles, Word Address, const Memory &Mbar);
+    void WriteByte(Byte Value, std::int32_t &NumOfCycles, Word Address, Memory &Mbar);
 
     // LDA
     static constexpr Byte INST_LDA_IMM{0xA9};  // LDA Immediate Addressing Mode
@@ -59,6 +60,25 @@ struct CPU
     static constexpr Byte INST_LDY_ABS{0xAC};  // LDY Absolute Addressing Mode
     static constexpr Byte INST_LDY_ABSX{0xBC}; // LDY Absolute X Addressing Mode
 
+    // STA
+    static constexpr Byte INST_STA_ZRP{0x85};  // STA Zero Page Addressing Mode
+    static constexpr Byte INST_STA_ZRPX{0x95}; // STA Zero Page Addressing Mode
+    static constexpr Byte INST_STA_ABS{0x8D};  // STA Absolute Addressing Mode
+    static constexpr Byte INST_STA_ABSX{0x9D}; // STA Absolute X Addressing Mode
+    static constexpr Byte INST_STA_ABSY{0x99}; // STA Absolute Y Addressing Mode
+    static constexpr Byte INST_STA_INDX{0x81}; // STA Indexed Indirect X Addressing Mode
+    static constexpr Byte INST_STA_INDY{0x91}; // STA Indirect Indexed Y Addressing Mode
+
+    // STX
+    static constexpr Byte INST_STX_ZRP{0x86};  // STX Zero Page Addressing Mode
+    static constexpr Byte INST_STX_ZRPY{0x96}; // STX Zero Page Y Addressing Mode
+    static constexpr Byte INST_STX_ABS{0x8E};  // STX Absolute Addressing Mode
+
+    // STY
+    static constexpr Byte INST_STY_ZRP{0x84};  // STY Zero Page Addressing Mode
+    static constexpr Byte INST_STY_ZRPX{0x94}; // STY Zero Page Addressing Mode
+    static constexpr Byte INST_STY_ABS{0x8C};  // STY Absolute Addressing Mode
+
     static constexpr Byte INST_JSR{0x20}; // JSR
 
     /**
@@ -73,7 +93,7 @@ struct CPU
      * @param Mbar
      * @return Word
      */
-    Word AddrZeroPage(std::int32_t &NumOfCycles, Memory &Mbar);
+    Word AddrZeroPage(std::int32_t &NumOfCycles, const Memory &Mbar);
 
     /**
      * @brief Addressing Mode: Zero Page + X offset
@@ -81,7 +101,7 @@ struct CPU
      * @param Mbar
      * @return Word
      */
-    Word AddrZeroPageX(std::int32_t &NumOfCycles, Memory &Mbar);
+    Word AddrZeroPageX(std::int32_t &NumOfCycles, const Memory &Mbar);
 
     /**
      * @brief Addressing Mode: Zero Page + Y offset
@@ -89,7 +109,7 @@ struct CPU
      * @param Mbar
      * @return Word
      */
-    Word AddrZeroPageY(std::int32_t &NumOfCycles, Memory &Mbar);
+    Word AddrZeroPageY(std::int32_t &NumOfCycles, const Memory &Mbar);
 
     /**
      * @brief Addressing Mode: Absolute
@@ -97,7 +117,7 @@ struct CPU
      * @param Mbar
      * @return Word
      */
-    Word AddrAbs(std::int32_t &NumOfCycles, Memory &Mbar);
+    Word AddrAbs(std::int32_t &NumOfCycles, const Memory &Mbar);
 
     /**
      * @brief Addressing Mode: Absolute + X offset
@@ -106,7 +126,7 @@ struct CPU
      * @param Mbar
      * @return Word
      */
-    Word AddrAbsX(std::int32_t &NumOfCycles, Memory &Mbar);
+    Word AddrAbsX(std::int32_t &NumOfCycles, const Memory &Mbar);
 
     /**
      * @brief Addressing Mode: Absolute + Y offset
@@ -114,6 +134,23 @@ struct CPU
      * @param Mbar
      * @return Word
      */
-    Word AddrAbsY(std::int32_t &NumOfCycles, Memory &Mbar);
+    Word AddrAbsY(std::int32_t &NumOfCycles, const Memory &Mbar);
+
+    /**
+     * @brief Addressing Mode: Indexed Indirect X
+     * @param NumOfCycles
+     * @param Mbar
+     * @return Word
+     */
+    Word AddrIndexedIndirectX(std::int32_t &NumOfCycles, const Memory &Mbar);
+
+    /**
+     * @brief Addressing Mode: Indirect Indexed Y
+     *
+     * @param NumOfCycles
+     * @param Mbar
+     * @return Word
+     */
+    Word AddrIndirectIndexedY(std::int32_t &NumOfCycles, const Memory &Mbar);
 };
 } // namespace MOS6502

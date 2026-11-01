@@ -15,7 +15,7 @@ void CPU::Reset(Memory &Mbar)
     Mbar.init();
 }
 
-Byte CPU::FetchByte(std::int32_t &NumofCycles, Memory &Mbar)
+Byte CPU::FetchByte(std::int32_t &NumofCycles, const Memory &Mbar)
 {
     Byte Data{Mbar[PC]};
     PC++;
@@ -23,7 +23,7 @@ Byte CPU::FetchByte(std::int32_t &NumofCycles, Memory &Mbar)
     return Data;
 }
 
-Word CPU::FetchWord(std::int32_t &NumofCycles, Memory &Mbar)
+Word CPU::FetchWord(std::int32_t &NumofCycles, const Memory &Mbar)
 {
     Word Data{Mbar[PC]};
     PC++;
@@ -39,19 +39,25 @@ Word CPU::FetchWord(std::int32_t &NumofCycles, Memory &Mbar)
     return Data;
 }
 
-Byte CPU::ReadByte(std::int32_t &NumOfCycles, Word Address, Memory &Mbar)
+Byte CPU::ReadByte(std::int32_t &NumOfCycles, Word Address, const Memory &Mbar)
 {
     Byte Data{Mbar[Address]};
     NumOfCycles--;
     return Data;
 }
 
-Word CPU::ReadWord(std::int32_t &NumOfCycles, Word Address, Memory &Mbar)
+Word CPU::ReadWord(std::int32_t &NumOfCycles, Word Address, const Memory &Mbar)
 {
     Byte LSB{ReadByte(NumOfCycles, Address, Mbar)};     // Lower Byte
     Byte HSB{ReadByte(NumOfCycles, Address + 1, Mbar)}; // Higher Byte
 
     return LSB | (HSB << 8);
+}
+
+void CPU::WriteByte(Byte Value, std::int32_t &NumOfCycles, Word Address, Memory &Mbar)
+{
+    Mbar[Address] = Value;
+    NumOfCycles--;
 }
 
 void CPU::LoadRegisterStatusSet(Byte RegisterToSet)
@@ -60,13 +66,13 @@ void CPU::LoadRegisterStatusSet(Byte RegisterToSet)
     N = (RegisterToSet & 0b10000000) >> 7;
 }
 
-Word CPU::AddrZeroPage(std::int32_t &NumOfCycles, Memory &Mbar)
+Word CPU::AddrZeroPage(std::int32_t &NumOfCycles, const Memory &Mbar)
 {
     Byte ZeroPageAddress{FetchByte(NumOfCycles, Mbar)};
     return ZeroPageAddress;
 }
 
-Word CPU::AddrZeroPageX(std::int32_t &NumOfCycles, Memory &Mbar)
+Word CPU::AddrZeroPageX(std::int32_t &NumOfCycles, const Memory &Mbar)
 {
     Byte ZeroPageAddress{FetchByte(NumOfCycles, Mbar)};
     ZeroPageAddress += X;
@@ -74,7 +80,7 @@ Word CPU::AddrZeroPageX(std::int32_t &NumOfCycles, Memory &Mbar)
     return ZeroPageAddress;
 }
 
-Word CPU::AddrZeroPageY(std::int32_t &NumOfCycles, Memory &Mbar)
+Word CPU::AddrZeroPageY(std::int32_t &NumOfCycles, const Memory &Mbar)
 {
     Byte ZeroPageAddress{FetchByte(NumOfCycles, Mbar)};
     ZeroPageAddress += Y;
@@ -82,13 +88,13 @@ Word CPU::AddrZeroPageY(std::int32_t &NumOfCycles, Memory &Mbar)
     return ZeroPageAddress;
 }
 
-Word CPU::AddrAbs(std::int32_t &NumOfCycles, Memory &Mbar)
+Word CPU::AddrAbs(std::int32_t &NumOfCycles, const Memory &Mbar)
 {
     Word AbsoluteAddress{FetchWord(NumOfCycles, Mbar)};
     return AbsoluteAddress;
 }
 
-Word CPU::AddrAbsX(std::int32_t &NumOfCycles, Memory &Mbar)
+Word CPU::AddrAbsX(std::int32_t &NumOfCycles, const Memory &Mbar)
 {
     Word AbsoluteAddress{FetchWord(NumOfCycles, Mbar)};
     Word AbsoluteAddressX = AbsoluteAddress + X;
@@ -99,7 +105,7 @@ Word CPU::AddrAbsX(std::int32_t &NumOfCycles, Memory &Mbar)
     return AbsoluteAddressX;
 }
 
-Word CPU::AddrAbsY(std::int32_t &NumOfCycles, Memory &Mbar)
+Word CPU::AddrAbsY(std::int32_t &NumOfCycles, const Memory &Mbar)
 {
     Word AbsoluteAddress{FetchWord(NumOfCycles, Mbar)};
     Word AbsoluteAddressY = AbsoluteAddress + Y;
@@ -109,9 +115,37 @@ Word CPU::AddrAbsY(std::int32_t &NumOfCycles, Memory &Mbar)
     }
     return AbsoluteAddressY;
 }
+
+Word CPU::AddrIndexedIndirectX(std::int32_t &NumOfCycles, const Memory &Mbar)
+{
+    Byte ZeroPageAddress{FetchByte(NumOfCycles, Mbar)};
+    ZeroPageAddress += X;
+    NumOfCycles--;
+    Word ActualAddress{ReadWord(NumOfCycles, ZeroPageAddress, Mbar)};
+    return ActualAddress;
+}
+
+Word CPU::AddrIndirectIndexedY(std::int32_t &NumOfCycles, const Memory &Mbar)
+{
+    Byte ZeroPageAddress{FetchByte(NumOfCycles, Mbar)};
+    Word ActualAddress{ReadWord(NumOfCycles, ZeroPageAddress, Mbar)};
+    Word ActualAddressY = ActualAddress + Y;
+    if (ActualAddressY - ActualAddress >= 0xFF)
+    {
+        NumOfCycles--;
+    }
+    return ActualAddressY;
+}
+
 // Return the number of cycles that were used
 std::int32_t CPU::Execute(std::int32_t NumOfCycles, Memory &Mbar)
 {
+    // Load a Register using the value from the memory address.
+    auto LoadRegister = [&NumOfCycles, &Mbar, this](Word Address, std::same_as<Byte> auto &Register) noexcept {
+        Register = ReadByte(NumOfCycles, Address, Mbar);
+        LoadRegisterStatusSet(Register);
+    };
+
     const std::int32_t CyclesRequested(NumOfCycles);
     while (NumOfCycles > 0)
     {
@@ -138,115 +172,175 @@ std::int32_t CPU::Execute(std::int32_t NumOfCycles, Memory &Mbar)
 
         case INST_LDA_ZRP: {
             Word Address{AddrZeroPage(NumOfCycles, Mbar)};
-            A = ReadByte(NumOfCycles, Address, Mbar);
-            LoadRegisterStatusSet(A);
+            LoadRegister(Address, A);
         }
         break;
 
         case INST_LDX_ZRP: {
             Word Address{AddrZeroPage(NumOfCycles, Mbar)};
-            X = ReadByte(NumOfCycles, Address, Mbar);
-            LoadRegisterStatusSet(X);
+            LoadRegister(Address, X);
         }
         break;
 
         case INST_LDY_ZRP: {
             Word Address{AddrZeroPage(NumOfCycles, Mbar)};
-            Y = ReadByte(NumOfCycles, Address, Mbar);
-            LoadRegisterStatusSet(Y);
+            LoadRegister(Address, Y);
         }
         break;
 
         case INST_LDA_ZRPX: {
             Word Address{AddrZeroPageX(NumOfCycles, Mbar)};
-            A = ReadByte(NumOfCycles, Address, Mbar);
-            LoadRegisterStatusSet(A);
+            LoadRegister(Address, A);
         }
         break;
 
         case INST_LDY_ZRPX: {
             Word Address{AddrZeroPageX(NumOfCycles, Mbar)};
-            Y = ReadByte(NumOfCycles, Address, Mbar);
-            LoadRegisterStatusSet(Y);
+            LoadRegister(Address, Y);
         }
         break;
 
         case INST_LDX_ZRPY: {
             Word Address{AddrZeroPageY(NumOfCycles, Mbar)};
-            X = ReadByte(NumOfCycles, Address, Mbar);
-            LoadRegisterStatusSet(X);
+            LoadRegister(Address, X);
         }
         break;
 
         case INST_LDA_ABS: {
             Word Address{AddrAbs(NumOfCycles, Mbar)};
-            A = ReadByte(NumOfCycles, Address, Mbar);
-            LoadRegisterStatusSet(A);
+            LoadRegister(Address, A);
         }
         break;
 
         case INST_LDX_ABS: {
             Word Address{AddrAbs(NumOfCycles, Mbar)};
-            X = ReadByte(NumOfCycles, Address, Mbar);
-            LoadRegisterStatusSet(X);
+            LoadRegister(Address, X);
         }
         break;
 
         case INST_LDY_ABS: {
             Word Address{AddrAbs(NumOfCycles, Mbar)};
-            Y = ReadByte(NumOfCycles, Address, Mbar);
-            LoadRegisterStatusSet(Y);
+            LoadRegister(Address, Y);
         }
         break;
 
         case INST_LDA_ABSX: {
             Word Address{AddrAbsX(NumOfCycles, Mbar)};
-            A = ReadByte(NumOfCycles, Address, Mbar);
-            LoadRegisterStatusSet(A);
+            LoadRegister(Address, A);
         }
         break;
 
         case INST_LDY_ABSX: {
             Word Address{AddrAbsX(NumOfCycles, Mbar)};
-            Y = ReadByte(NumOfCycles, Address, Mbar);
-            LoadRegisterStatusSet(Y);
+            LoadRegister(Address, Y);
         }
         break;
 
         case INST_LDA_ABSY: {
             Word Address{AddrAbsY(NumOfCycles, Mbar)};
-            A = ReadByte(NumOfCycles, Address, Mbar);
-            LoadRegisterStatusSet(A);
+            LoadRegister(Address, A);
         }
         break;
 
         case INST_LDX_ABSY: {
             Word Address{AddrAbsY(NumOfCycles, Mbar)};
-            X = ReadByte(NumOfCycles, Address, Mbar);
-            LoadRegisterStatusSet(X);
+            LoadRegister(Address, X);
         }
         break;
 
         case INST_LDA_INDX: {
-            Byte ZeroPageAddress{FetchByte(NumOfCycles, Mbar)};
-            ZeroPageAddress += X;
-            NumOfCycles--;
-            Word ActualAddress{ReadWord(NumOfCycles, ZeroPageAddress, Mbar)};
-            A = ReadByte(NumOfCycles, ActualAddress, Mbar);
-            LoadRegisterStatusSet(A);
+            Word Address{AddrIndexedIndirectX(NumOfCycles, Mbar)};
+            LoadRegister(Address, A);
         }
         break;
 
         case INST_LDA_INDY: {
-            Byte ZeroPageAddress{FetchByte(NumOfCycles, Mbar)};
-            Word ActualAddress{ReadWord(NumOfCycles, ZeroPageAddress, Mbar)};
-            Word ActualAddressY = ActualAddress + Y;
-            A = ReadByte(NumOfCycles, ActualAddressY, Mbar);
-            if (ActualAddressY - ActualAddress >= 0xFF)
-            {
-                NumOfCycles--;
-            }
-            LoadRegisterStatusSet(A);
+            Word Address{AddrIndirectIndexedY(NumOfCycles, Mbar)};
+            LoadRegister(Address, A);
+        }
+        break;
+
+        case INST_STA_ZRP: {
+            Word Address{AddrZeroPage(NumOfCycles, Mbar)};
+            WriteByte(A, NumOfCycles, Address, Mbar);
+        }
+        break;
+
+        case INST_STA_ZRPX: {
+            Word Address{AddrZeroPageX(NumOfCycles, Mbar)};
+            WriteByte(A, NumOfCycles, Address, Mbar);
+        }
+        break;
+
+        case INST_STA_ABS: {
+            Word Address{AddrAbs(NumOfCycles, Mbar)};
+            WriteByte(A, NumOfCycles, Address, Mbar);
+        }
+        break;
+
+        case INST_STA_ABSX: {
+            Word Address{AddrAbsX(NumOfCycles, Mbar)};
+            WriteByte(A, NumOfCycles, Address, Mbar);
+            // AddrAbsoulteX can consume an extra cycle on boundaries?
+            NumOfCycles--; // TODO: 2nd Try(sourcing the consumption of this cycle)
+        }
+        break;
+
+        case INST_STA_ABSY: {
+            Word Address{AddrAbsY(NumOfCycles, Mbar)};
+            WriteByte(A, NumOfCycles, Address, Mbar);
+            // AddrAbsoulteY can consume an extra cycle on boundaries?
+            NumOfCycles--; // TODO: 2nd Try(sourcing the consumption of this cycle)
+        }
+        break;
+
+        case INST_STA_INDX: {
+            Word Address{AddrIndexedIndirectX(NumOfCycles, Mbar)};
+            WriteByte(A, NumOfCycles, Address, Mbar);
+        }
+        break;
+
+        case INST_STA_INDY: {
+            Word Address{AddrIndirectIndexedY(NumOfCycles, Mbar)};
+            WriteByte(A, NumOfCycles, Address, Mbar);
+            // IndirectIndexedY can consume an extra cycle on boundaries?
+            NumOfCycles--; // TODO: 2nd Try(sourcing the consumption of this cycle)
+        }
+        break;
+
+        case INST_STX_ZRP: {
+            Word Address{AddrZeroPage(NumOfCycles, Mbar)};
+            WriteByte(X, NumOfCycles, Address, Mbar);
+        }
+        break;
+
+        case INST_STX_ZRPY: {
+            Word Address{AddrZeroPageY(NumOfCycles, Mbar)};
+            WriteByte(X, NumOfCycles, Address, Mbar);
+        }
+        break;
+
+        case INST_STX_ABS: {
+            Word Address{AddrAbs(NumOfCycles, Mbar)};
+            WriteByte(X, NumOfCycles, Address, Mbar);
+        }
+        break;
+
+        case INST_STY_ZRP: {
+            Word Address{AddrZeroPage(NumOfCycles, Mbar)};
+            WriteByte(Y, NumOfCycles, Address, Mbar);
+        }
+        break;
+
+        case INST_STY_ZRPX: {
+            Word Address{AddrZeroPageX(NumOfCycles, Mbar)};
+            WriteByte(Y, NumOfCycles, Address, Mbar);
+        }
+        break;
+
+        case INST_STY_ABS: {
+            Word Address{AddrAbs(NumOfCycles, Mbar)};
+            WriteByte(Y, NumOfCycles, Address, Mbar);
         }
         break;
 
