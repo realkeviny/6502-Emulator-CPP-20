@@ -1,14 +1,38 @@
 # IDE / Editor configs
 .vscode/
-
+.vs/
+.cache/
+compile_commands.json
+CMakeUserPresets.json
+*.code-workspace
 
 # Build directories
 build/
 bin/
 out/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
 
-# Compiled files
+# C/C++ & MSVC Artifacts
 *.o
 *.obj
 *.exe
-*.png
+*.pdb
+*.ilk
+*.idb
+*.lib
+*.a
+*.dll
+*.so
+*.dylib
+*.suo
+*.user
+*.opendb
+*.VC.db
+ipch/
+
+# System
+Thumbs.db
+.DS_Store

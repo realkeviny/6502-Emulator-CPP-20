@@ -1,8 +1,11 @@
-cmake_minimum_required(VERSION 3.28) 
+cmake_minimum_required(VERSION 3.28)
 
-project(6502-C++20 VERSION 1.0.2 LANGUAGES C CXX)
+project(
+    6502-C++20
+    VERSION 1.0.3
+    LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD          23)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(ENABLE_LTO "Link-Time Optimization" OFF)
@@ -27,8 +30,8 @@ if(USE_CPM)
         list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras)
     endif()
 elseif(USE_CONAN)
-        message(STATUS "Activate Conan")
-        include(${CMAKE_BINARY_DIR}/conan_toolchain.cmake)
+    message(STATUS "Activate Conan")
+    include(${CMAKE_BINARY_DIR}/conan_toolchain.cmake)
 
     if(ENABLE_TESTING)
         find_package(Catch2 REQUIRED)
@@ -39,11 +42,10 @@ else()
     include(FetchContent)
     if(ENABLE_TESTING)
         FetchContent_Declare(
-            Catch2 
+            Catch2
             GIT_REPOSITORY https://github.com/catchorg/Catch2
             GIT_TAG v3.16.0
-            GIT_SHALLOW TRUE
-        )
+            GIT_SHALLOW TRUE)
         FetchContent_MakeAvailable(Catch2)
         list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
     endif()

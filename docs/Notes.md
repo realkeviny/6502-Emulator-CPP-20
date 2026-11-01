@@ -239,6 +239,10 @@ Addressing Mode: Indrirect Indexed
    - **Page Crossing Penalty:** If adding `Y` makes the target address cross the page boundary (Low Byte + Y > 255), the CPU needs **1 extra cycle** to fix the high byte (total: **6 cycles**).
    - **Write instructions (e.g., `STA`):** Always take **6 cycles** regardless of page crossing.
 
+**STA(Store Accumulator)(No Flags affected):** 
+
+Load memory from accumulator.
+
 # Jump to Subroutine(JSR)
 
 ![JSR opcode table](F:\6502-Emulator-C-20\JSR opcode table.png)

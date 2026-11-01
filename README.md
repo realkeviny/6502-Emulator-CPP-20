@@ -11,7 +11,10 @@ A modern C++ implementation of the MOS 6502 processor, designed with clean archi
 ## Current Progress
 
 - **Addressing Modes**: Immediate, Zero Page, Zero Page X, Zero Page Y, Absolute, Absolute X, Absolute Y, Indirect Indexed, Indexed Indirect
-- **Core Instructions**: `LDA`, `LDX`, `LDY`, `JSR` (fully verified with flag logic)
+- **Core Instructions**:
+  - **Load Family**: `LDA`, `LDX`, `LDY` (verified with flag mutation logic)
+  - **Store Family**: `STA`, `STX`, `STY` (verified across all supported addressing modes with flag preservation)
+  - **Control Flow**: `JSR`
 
 ## Build
 
